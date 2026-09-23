@@ -1,0 +1,21 @@
+{
+  "name": "jev-docs",
+  "version": "0.0.0",
+  "description": "A javascript jev-based decision support system",
+  "main": "index.js",
+  "scripts": {
+    "example:customer": "tsx examples/customer-workflow.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "tsx": "^4.20.5",
+    "typescript": "^5.9.2"
+  },
+  "keywords": [
+    "jev",
+    "typesafe-ai-jev",
+    "decision-support-system"
+  ],
+  "author": "pairo",
+  "license": "ISC"
+}
