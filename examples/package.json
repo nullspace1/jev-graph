@@ -1,0 +1,21 @@
+{
+  "name": "examples",
+  "version": "1.0.0",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "example:support-ticket": "tsx support_ticket_analyzer/index.ts"
+  },
+  "dependencies": {
+    "@jev/core": "file:../core",
+    "chess.js": "^1.4.0"
+  },
+  "devDependencies": {
+    "tsx": "^4.20.5",
+    "typescript": "^5.9.2",
+    "@types/node": "^26.6.2"
+  },
+  "author": "",
+  "license": "ISC",
+  "description": ""
+}

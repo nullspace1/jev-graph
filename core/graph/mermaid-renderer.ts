@@ -22,7 +22,7 @@ export class MermaidRenderer implements Renderer<string> {
         this.includeTags = options.includeTags ?? false
     }
 
-    public render(drawing: JDrawing<any, any>): string {
+    public render(drawing: JDrawing): string {
         const nodeIds = this.createNodeIds(drawing)
         const lines = [`flowchart ${this.direction}`]
 
@@ -51,9 +51,9 @@ export class MermaidRenderer implements Renderer<string> {
     }
 
     private createNodeIds(
-        drawing: JDrawing<any, any>
-    ): Map<JNode<any, any>, string> {
-        const nodeIds = new Map<JNode<any, any>, string>()
+        drawing: JDrawing
+    ): Map<JNode<any>, string> {
+        const nodeIds = new Map<JNode<any>, string>()
         let index = 0
 
         for (const node of drawing.visited.keys()) {
@@ -65,7 +65,7 @@ export class MermaidRenderer implements Renderer<string> {
         return nodeIds
     }
 
-    private nodeLabel(node: JNode<any, any>): string {
+    private nodeLabel(node: JNode<any>): string {
         const parts = [node.name ?? node.constructor.name]
 
         if (this.includeDescriptions && node.description) {

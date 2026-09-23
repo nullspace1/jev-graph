@@ -1,47 +1,62 @@
-import JNode from "./node"
-import type Uncertain from "../uncertain"
+import JNode, { type JNodeParams } from "./node"
+import type Uncertain from "./uncertain"
 import type { JExecutionState } from "../graph/execution_state"
 import {
     type ConfidencePolicy,
     multiplicativeConfidencePolicy
-} from "../confidence-policy"
+} from "./confidence-policy"
+import { JNodeResult } from "./node_result"
+import { identityMapping, type StateMapping } from "./state-mapping"
+
+export interface JThresholdParams<TState extends object> extends JNodeParams {
+    threshold: number
+    accepted: JNode<TState>
+    rejected: JNode<TState>
+    confidencePolicy?: ConfidencePolicy
+}
 
 /** Routes evaluation according to the accumulated confidence. */
-class JThreshold<T, U> extends JNode<T, U> {
+class JThreshold<TAllowedStates extends object> extends JNode<TAllowedStates> {
    
-    constructor(
-        public readonly threshold: number,
-        public readonly accepted: JNode<T, U>,
-        public readonly rejected: JNode<T, U>,
-        private readonly confidencePolicy: ConfidencePolicy = multiplicativeConfidencePolicy,
-        name?: string,
-        description?: string,
-        tags?: string[]
-    ) {
-        super(name, description, tags)
-        if (threshold < 0 || threshold > 1) {
+    public readonly threshold: number
+    public readonly accepted: JNode<TAllowedStates>
+    public readonly rejected: JNode<TAllowedStates>
+    private readonly confidencePolicy: ConfidencePolicy
+
+    constructor(params: JThresholdParams<TAllowedStates>) {
+        super(params)
+        this.threshold = params.threshold
+        this.accepted = params.accepted
+        this.rejected = params.rejected
+        this.confidencePolicy = params.confidencePolicy ?? multiplicativeConfidencePolicy
+        if (this.threshold < 0 || this.threshold > 1) {
             throw new RangeError("Threshold must be between 0 and 1")
         }
     }
 
-    eval(state: Uncertain<T>, executionState: JExecutionState<T, U>): Uncertain<U> {
+    public async eval(
+        state: Uncertain<TAllowedStates>,
+        _executionState: JExecutionState<TAllowedStates>
+    ): Promise<JNodeResult<TAllowedStates>> {
         const nextNode = state.confidence >= this.threshold
             ? this.accepted
             : this.rejected
 
-        // A threshold only routes the state; it does not add uncertainty.
         const nextState = state.addUncertainty(
             this.confidencePolicy.identity,
             this.confidencePolicy
         )
 
-        return nextNode.advance(nextState, executionState)
+        return {
+            state: nextState,
+            node: nextNode
+        }
     }
 
-     public edges(): [JNode<T, U>, string][] {
+     public edges(): [JNode<TAllowedStates>, string, StateMapping<TAllowedStates>][] {
         return [
-            [this.accepted, `confidence >= ${this.threshold}`],
-            [this.rejected, `confidence < ${this.threshold}`]
+            [this.accepted, `confidence >= ${this.threshold}`, identityMapping],
+            [this.rejected, `confidence < ${this.threshold}`, identityMapping]
         ]
     }
 }

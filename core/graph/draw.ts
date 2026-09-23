@@ -1,26 +1,26 @@
 import JNode from "../nodes/node"
 
 
-export class JDrawNode<T,U> {
+export class JDrawNode {
 
-    public node : JNode<T,U>
-    public children : Array<JDrawEdge<T,U>>
+    public node : JNode<any>
+    public children : Array<JDrawEdge>
 
-    constructor(node : JNode<T,U>, children : Array<JDrawEdge<T,U>> = []) {
+    constructor(node : JNode<any>, children : Array<JDrawEdge> = []) {
         this.node = node
         this.children = children
     }
 
 }
 
-export class JDrawEdge<T,U> {
+export class JDrawEdge {
 
-    public target : JDrawNode<T,U>
+    public target : JDrawNode
     public description : string
     public recursive : boolean
 
     constructor(
-        target : JDrawNode<T,U>,
+        target : JDrawNode,
         description : string,
         recursive : boolean = false
     ) {
@@ -31,27 +31,27 @@ export class JDrawEdge<T,U> {
 
 }
 
-export class JDrawing<T,U> {
+export class JDrawing {
 
-    public root : JDrawNode<T,U> | null
-    public visited : Map<JNode<T,U>, JDrawNode<T,U>> = new Map()
+    public root : JDrawNode | null
+    public visited : Map<JNode<any>, JDrawNode> = new Map()
 
     constructor() {
         this.root = null
     }
 
-    isVisited(node : JNode<T,U>) : boolean {
+    isVisited(node : JNode<any>) : boolean {
         return this.visited.has(node)
     }
 
-    add(node : JDrawNode<T,U>) {
+    add(node : JDrawNode) {
         if (this.root === null) {
             this.root = node
         }
         this.visited.set(node.node, node)
     }
 
-    getRoot() : JDrawNode<T,U> | null {
+    getRoot() : JDrawNode | null {
         return this.root
     }
 

@@ -1,18 +1,19 @@
 import type JNode from "../nodes/node"
-import type Uncertain from "../uncertain"
+import type { Json } from "../nodes/node"
+import type Uncertain from "../nodes/uncertain"
 
 /**
  * Raised when a node receives a valid value for which it has no valid route.
  * The node and state are retained to make graph failures inspectable.
  */
-class InvalidStateError<T, U> extends Error {
-    public readonly node: JNode<T, U>
-    public readonly state: Uncertain<T>
+class InvalidStateError<TAllowedStates extends object> extends Error {
+    public readonly node: JNode<TAllowedStates>
+    public readonly state: Uncertain<TAllowedStates>
 
     constructor(
         message: string,
-        node: JNode<T, U>,
-        state: Uncertain<T>
+        node: JNode<TAllowedStates>,
+        state: Uncertain<TAllowedStates>
     ) {
         super(message)
         this.name = "InvalidStateError"

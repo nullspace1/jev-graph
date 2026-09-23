@@ -1,0 +1,25 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "strict": true,
+    "noEmit": true,
+    "skipLibCheck": true,
+    "baseUrl": "./",
+    "paths": {
+      "@jev/core": ["index.ts"],
+      "@jev/core/*": ["*"],
+    },
+    "types": ["node", "jest", "express"]
+  },
+  "include": [
+    "index.ts",
+    "interface/**/*.ts",
+    "events/**/*.ts",
+    "exceptions/**/*.ts",
+    "graph/**/*.ts",
+    "nodes/**/*.ts",
+    "examples/**/*.ts"
+  ]
+}

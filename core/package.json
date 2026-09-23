@@ -1,13 +1,18 @@
 {
-  "name": "jev-docs",
+  "name": "@jev/core",
   "version": "0.0.0",
   "description": "A javascript jev-based decision support system",
-  "main": "index.js",
+  "main": "./index.ts",
+  "types": "./index.ts",
+  "exports": {
+    ".": "./index.ts"
+  },
   "scripts": {
     "example:customer": "tsx examples/customer-workflow.ts",
     "typecheck": "tsc --noEmit"
   },
   "devDependencies": {
+    "@types/node": "^26.6.2",
     "tsx": "^4.20.5",
     "typescript": "^5.9.2"
   },
@@ -17,5 +22,11 @@
     "decision-support-system"
   ],
   "author": "pairo",
-  "license": "ISC"
+  "license": "ISC",
+  "imports": {
+    "#jev/core": "./index.ts"
+  },
+  "dependencies": {
+    "@typesafe-ai/sdk": "^0.6.0"
+  }
 }

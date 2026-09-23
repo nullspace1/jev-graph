@@ -1,56 +1,87 @@
-import type { ScoreAnswer } from "../../interface/dto"
-import JNode from "./node"
-import Uncertain from "../uncertain"
+import JNode, { type JNodeParams } from "./node"
+import Uncertain from "./uncertain"
 import type { JExecutionState } from "../graph/execution_state"
 import {
     type ConfidencePolicy,
     multiplicativeConfidencePolicy
-} from "../confidence-policy"
+} from "./confidence-policy"
 import InvalidStateError from "../exceptions/invalid_state"
+import { JNodeResult } from "./node_result"
+import { identityMapping, type StateMapping } from "./state-mapping"
+import { Question, ScoreCriteria, ScoreQuestion, ScoreResponse } from "@typesafe-ai/sdk"
 
-class JScoring<T, U> extends JNode<T, U> {
+export type ScoreAction<TState extends object> = [
+    number,
+    number,
+    JNode<TState>
+]
+
+export type ScoreMapper<TState extends object> = (
+    score: number,
+    state: TState
+) => TState
+
+export interface JScoringParams<TState extends object, C extends ScoreCriteria> extends JNodeParams {
+    question: string
+    projection: (state: TState) => object
+    options: C
+    action: ScoreAction<TState>[]
+    mapper?: ScoreMapper<TState>
+    questionName?: string
+    confidencePolicy?: ConfidencePolicy
+}
+
+type SingleScoringQuestion<T extends ScoreCriteria> = {[key: string]: ScoreQuestion<T> }
+
+class JScoring<TState extends object, C extends ScoreCriteria> extends JNode<TState, SingleScoringQuestion<ScoreCriteria>> {
     
     public questionName: string
     public question: string
-    public options: string[]
-    public action: Array<[number,number,JNode<T, U>]>
+    public options: C
+    public action: Array<ScoreAction<TState>>
     public confidencePolicy: ConfidencePolicy
 
-    constructor(
-        question: string,
-        options: string[],
-        action: Array<[number,number,JNode<T, U>]>,
-        questionName?: string,
-        confidencePolicy: ConfidencePolicy = multiplicativeConfidencePolicy,
-        name?: string,
-        description?: string,
-        tags?: string[]
-    ) {
-        super(name, description, tags)
-        this.question = question
-        this.options = options
-        this.action = action
-        this.questionName = questionName || "question"
-        this.confidencePolicy = confidencePolicy
+    constructor(params: JScoringParams<TState, C>) {
+        super(params)
+        this.question = params.question
+        this.options = params.options
+        this.action = params.action
+        this.questionName = params.questionName ?? "question"
+        this.confidencePolicy = params.confidencePolicy ?? multiplicativeConfidencePolicy
+        this.projection = params.projection
+        this.mapper = params.mapper
     }
 
-    eval(state: Uncertain<T>, executionState: JExecutionState<T, U>): Uncertain<U> {
+    private readonly projection: (state: TState) => object
+    private readonly mapper?: ScoreMapper<TState>
 
-        const output = executionState.callApi(state.value, {
-                [this.questionName]: {
+    public apiQuestions(): SingleScoringQuestion<C> {
+        const question: ScoreQuestion<C> = {
                     type: "score",
                     instructions: this.question,
                     criteria: this.options
-                }
-        })
+        }
 
-        const x =  output.answers[this.questionName] as ScoreAnswer
+        return { [this.questionName]: question }
+    }
+
+    public async eval(
+        state: Uncertain<TState>,
+        executionState: JExecutionState<TState>
+    ): Promise<JNodeResult<TState>> {
+
+        const output = await this.callApi(state, executionState)
+
+        const x =  output.answers[this.questionName] as ScoreResponse
 
         const nextState = state.addUncertainty(x.confidence, this.confidencePolicy)
 
         for (const [min, max, next] of this.action) {
             if (x.score >= min && x.score <= max) {
-                return next.advance(nextState, executionState)
+                return {
+                    state: nextState.apply(this.mappingFor(x.score)),
+                    node: next
+                }
             }
         }
 
@@ -58,8 +89,24 @@ class JScoring<T, U> extends JNode<T, U> {
 
     }
 
-    public edges(): [JNode<T, U>, string][] {
-        return this.action.map(([min, max, next]) => [next, `${min} <= score <= ${max}`])
+    protected projectQuestionState(state: TState): object {
+        return this.projection(state)
+    }
+
+    private mappingFor(score: number): StateMapping<TState> {
+        if (this.mapper === undefined) {
+            return identityMapping
+        }
+
+        return state => this.mapper!(score, state)
+    }
+
+    public edges(): [JNode<TState>, string, StateMapping<TState>][] {
+        return this.action.map(([min, max, next]) => [
+            next,
+            `${min} <= score <= ${max}`,
+            this.mappingFor(min)
+        ])
     }
 
 }

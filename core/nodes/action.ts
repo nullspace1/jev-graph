@@ -1,38 +1,50 @@
-import JNode from "./node"
-import Uncertain from "../uncertain"
+import JNode, { type JNodeParams } from "./node"
+import type Uncertain from "./uncertain"
 import type { JExecutionState } from "../graph/execution_state"
 import {
     type ConfidencePolicy,
     multiplicativeConfidencePolicy
-} from "../confidence-policy"
+} from "./confidence-policy"
+import type { JNodeResult } from "./node_result"
+import type { StateMapping } from "./state-mapping"
 
-class JAction<T, U> extends JNode<T, U> {
+export interface JActionParams<TState extends object> extends JNodeParams {
+    action: (state: TState) => TState
+    node: JNode<TState>
+    confidencePolicy?: ConfidencePolicy
+}
 
-    public action: (state: Uncertain<T>) => Uncertain<T>
-    public node: JNode<T, U>
+/** Transforms one allowed graph state into another allowed graph state. */
+class JAction<TState extends object> extends JNode<TState, {}> {
+
+    public action: (state: TState) => TState
+    public node: JNode<TState>
     public confidencePolicy: ConfidencePolicy
 
-    constructor(
-        action: (state: Uncertain<T>) => Uncertain<T>,
-        node: JNode<T, U>,
-        confidencePolicy: ConfidencePolicy = multiplicativeConfidencePolicy,
-        name?: string,
-        description?: string,
-        tags?: string[]
-    ) {
-        super(name, description, tags)
-        this.action = action
-        this.node = node
-        this.confidencePolicy = confidencePolicy
+    constructor(params: JActionParams<TState>) {
+        super({ ...params, shouldPrefetch: params.shouldPrefetch ?? true })
+        this.action = params.action
+        this.node = params.node
+        this.confidencePolicy = params.confidencePolicy ?? multiplicativeConfidencePolicy
     }
 
-    eval(state: Uncertain<T>, _executionState: JExecutionState<T, U>): Uncertain<U> {
-        const result = this.action(state)
-        return this.node.advance(result, _executionState)
+    public async eval(
+        state: Uncertain<TState>,
+        _executionState: JExecutionState<TState>
+    ): Promise<JNodeResult<TState>> {
+        const nextState = state.apply(this.action)
+        return {
+            node: this.node,
+            state: nextState
+        }
     }
 
-        public edges(): [JNode<T, U>, string][] {
-        return [[this.node, this.description || "mapped"]]
+    public edges(): [JNode<TState>, string, StateMapping<TState>][] {
+        return [[
+            this.node,
+            this.description || "mapped",
+            this.action
+        ]]
     }
 
 }

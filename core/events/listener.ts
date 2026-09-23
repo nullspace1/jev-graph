@@ -1,9 +1,10 @@
 import type { JExecutionState } from "../graph/execution_state";
+import type { Json } from "../nodes/node";
 
-export interface JListener<T,U> {
+export interface JListener<TAllowedStates extends object> {
 
-    listen(state : JExecutionState<T,U>) : void 
-    shouldListen(state : JExecutionState<T,U>) : boolean
+    listen(state : JExecutionState<TAllowedStates>) : void 
+    shouldListen(state : JExecutionState<TAllowedStates>) : boolean
     
 }
 

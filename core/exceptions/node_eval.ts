@@ -1,15 +1,16 @@
 import type JNode from "../nodes/node"
-import type Uncertain from "../uncertain"
+import type { Json } from "../nodes/node"
+import type Uncertain from "../nodes/uncertain"
 
 /** An error raised while evaluating a specific node and uncertain state. */
-class NodeEvalError<T, U> extends Error {
-    public readonly node: JNode<T, U>
-    public readonly state: Uncertain<T>
+class NodeEvalError<TAllowedStates extends object> extends Error {
+    public readonly node: JNode<TAllowedStates>
+    public readonly state: Uncertain<TAllowedStates>
     public readonly cause: unknown
 
     constructor(
-        node: JNode<T, U>,
-        state: Uncertain<T>,
+        node: JNode<TAllowedStates>,
+        state: Uncertain<TAllowedStates>,
         cause: unknown
     ) {
         const causeMessage = cause instanceof Error
