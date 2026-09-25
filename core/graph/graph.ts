@@ -3,6 +3,7 @@ import Uncertain from "../nodes/uncertain"
 import type JevApi from "../interface/api"
 import type { JListener } from "../events/listener"
 import { JExecutionState } from "./execution_state"
+import type { JExecutionResult } from "./execution_result"
 import { JConnectedNodes } from "./connected_nodes"
 import { JDrawing } from "./draw"
 import NodeEvalError from "../exceptions/node_eval"
@@ -20,7 +21,7 @@ class JGraph<TInput extends object, TAllowedStates extends TInput> {
         this.api = api
     }
 
-    public async evaluate(state: TInput): Promise<[JExecutionState<TAllowedStates>, Uncertain<TAllowedStates>]> {
+    public async evaluate(state: TInput): Promise<JExecutionResult<TAllowedStates>> {
         let currentNode: JNode<TAllowedStates> | null = this.initialNode
         let currentState = Uncertain.from<TAllowedStates>(
             state as TAllowedStates
@@ -64,7 +65,7 @@ class JGraph<TInput extends object, TAllowedStates extends TInput> {
             }
         }
 
-        return [executionState, currentState]
+        return executionState.toResult(currentState)
 
     }
 
@@ -129,16 +130,15 @@ class JGraph<TInput extends object, TAllowedStates extends TInput> {
             visited.add(current)
             this.ensureAdjacencyEntry(adjacency, current)
 
-            if (!current.shouldPrefetch) {
-                continue
-            }
-
             for (const [nextNode] of current.edges()) {
                 pending.push(nextNode)
                 this.ensureAdjacencyEntry(adjacency, nextNode)
-                if (!nextNode.modifiesState) {
+                if (
+                    current.shouldPrefetch &&
+                    !current.modifiesState &&
+                    nextNode.shouldPrefetch
+                ) {
                     adjacency.get(current)?.add(nextNode)
-                    adjacency.get(nextNode)?.add(current)
                 }
             }
         }

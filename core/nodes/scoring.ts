@@ -12,7 +12,6 @@ import { Question, ScoreCriteria, ScoreQuestion, ScoreResponse } from "@typesafe
 
 export type ScoreAction<TState extends object> = [
     number,
-    number,
     JNode<TState>
 ]
 
@@ -46,6 +45,7 @@ class JScoring<TState extends object, C extends ScoreCriteria> extends JNode<TSt
         this.question = params.question
         this.options = params.options
         this.action = params.action
+        this.validateActionStarts()
         this.questionName = params.questionName ?? "question"
         this.confidencePolicy = params.confidencePolicy ?? multiplicativeConfidencePolicy
         this.projection = params.projection
@@ -76,12 +76,14 @@ class JScoring<TState extends object, C extends ScoreCriteria> extends JNode<TSt
 
         const nextState = state.addUncertainty(x.confidence, this.confidencePolicy)
 
-        for (const [min, max, next] of this.action) {
-            if (x.score >= min && x.score <= max) {
-                return {
-                    state: nextState.apply(this.mappingFor(x.score)),
-                    node: next
-                }
+        const action = this.action
+            .filter(([start]) => x.score >= start)
+            .at(-1)
+
+        if (action !== undefined) {
+            return {
+                state: nextState.apply(this.mappingFor(x.score)),
+                node: action[1]
             }
         }
 
@@ -101,11 +103,27 @@ class JScoring<TState extends object, C extends ScoreCriteria> extends JNode<TSt
         return state => this.mapper!(score, state)
     }
 
+    private validateActionStarts(): void {
+        if (this.action.length === 0) {
+            throw new RangeError("Scoring actions cannot be empty")
+        }
+
+        if (this.action[0][0] !== 0) {
+            throw new RangeError("The first scoring action must start at 0")
+        }
+
+        for (let index = 1; index < this.action.length; index++) {
+            if (this.action[index - 1][0] >= this.action[index][0]) {
+                throw new RangeError("Scoring action starts must be strictly ascending")
+            }
+        }
+    }
+
     public edges(): [JNode<TState>, string, StateMapping<TState>][] {
-        return this.action.map(([min, max, next]) => [
+        return this.action.map(([start, next]) => [
             next,
-            `${min} <= score <= ${max}`,
-            this.mappingFor(min)
+            `score >= ${start}`,
+            this.mappingFor(start)
         ])
     }
 

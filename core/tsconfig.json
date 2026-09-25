@@ -11,7 +11,7 @@
       "@jev/core": ["index.ts"],
       "@jev/core/*": ["*"],
     },
-    "types": ["node", "jest", "express"]
+    "types": ["node", "jest"]
   },
   "include": [
     "index.ts",

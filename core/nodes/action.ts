@@ -11,7 +11,6 @@ import type { StateMapping } from "./state-mapping"
 export interface JActionParams<TState extends object> extends JNodeParams {
     action: (state: TState) => TState
     node: JNode<TState>
-    confidencePolicy?: ConfidencePolicy
 }
 
 /** Transforms one allowed graph state into another allowed graph state. */
@@ -19,13 +18,11 @@ class JAction<TState extends object> extends JNode<TState, {}> {
 
     public action: (state: TState) => TState
     public node: JNode<TState>
-    public confidencePolicy: ConfidencePolicy
 
     constructor(params: JActionParams<TState>) {
         super({ ...params, shouldPrefetch: params.shouldPrefetch ?? true })
         this.action = params.action
         this.node = params.node
-        this.confidencePolicy = params.confidencePolicy ?? multiplicativeConfidencePolicy
     }
 
     public async eval(

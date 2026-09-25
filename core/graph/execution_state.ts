@@ -10,12 +10,11 @@ import type Uncertain from "../nodes/uncertain"
 import { JAnswerCache } from "./answer_cache"
 import { JConnectedNodes } from "./connected_nodes"
 import { Question, Questions, SystemOneResult } from "@typesafe-ai/sdk"
-
-interface ErrorLog<TAllowedStates extends object> {
-    error: Error
-    step: number
-    node: JNode<TAllowedStates>
-}
+import {
+    JExecutionResult,
+    type JExecutionError
+} from "./execution_result"
+import APIError from "../exceptions/api_error"
 
 export class JExecutionState<TAllowedStates extends object> {
 
@@ -29,7 +28,7 @@ export class JExecutionState<TAllowedStates extends object> {
     private inputTokenCount: number = 0
     private outputTokenCount: number = 0
     private readonly api: JevApi
-    private error: ErrorLog<TAllowedStates> | null = null
+    private error: JExecutionError<TAllowedStates> | null = null
 
     constructor(
         currentNode: JNode<TAllowedStates>,
@@ -57,14 +56,16 @@ export class JExecutionState<TAllowedStates extends object> {
         projectedState: object
     ): Promise<SystemOneResult<Questions>> {
         let fetchedOutput: SystemOneResult<Questions> | null = null
-        const hasCachedAnswers = this.answerCache.hasAnswersFor(
+        const questionsToFetch = this.questionsToPrefetch(
             projectedState,
-            this.currentNode,
             questions
         )
 
-        if (!hasCachedAnswers) {
-            fetchedOutput = await this.fetchAndCacheForCurrentNode(projectedState)
+        if (Object.keys(questionsToFetch).length > 0) {
+            fetchedOutput = await this.fetchAndCacheForCurrentNode(
+                projectedState,
+                questionsToFetch
+            )
         }
 
         return this.answerCache.outputFor(
@@ -80,10 +81,15 @@ export class JExecutionState<TAllowedStates extends object> {
     }
 
     private async fetchAndCacheForCurrentNode(
-        projectedState: object
+        projectedState: object,
+        questions: Record<string, Question>
     ): Promise<SystemOneResult<Questions>> {
-        const questions = this.questionsToPrefetch(projectedState)
-        const output = await this.api.call(projectedState, questions)
+        let output: SystemOneResult<Questions>
+        try {
+            output = await this.api.call(projectedState, questions)
+        } catch (error) {
+            throw new APIError(this.api, error)
+        }
 
         this.answerCache.store(projectedState, output)
 
@@ -92,10 +98,22 @@ export class JExecutionState<TAllowedStates extends object> {
     }
 
     private questionsToPrefetch(
-        projectedState: object
+        projectedState: object,
+        requestedQuestions: Record<string, Question>
     ): Record<string, Question> {
         const nodes = this.connectedNodes?.nodes ?? new Set([this.currentNode])
-        return this.answerCache.questionsToFetch(projectedState, nodes)
+        const questions = this.answerCache.questionsToFetch(projectedState, nodes)
+
+        for (const [questionName, question] of Object.entries(requestedQuestions)) {
+            const key = JConnectedNodes.questionKey(this.currentNode, questionName)
+            if (!this.answerCache.hasAnswersFor(projectedState, this.currentNode, {
+                [questionName]: question
+            })) {
+                questions[key] = question
+            }
+        }
+
+        return questions
     }
 
     private traceApiCall(output: SystemOneResult<Questions>): void {
@@ -175,8 +193,19 @@ export class JExecutionState<TAllowedStates extends object> {
         return this.eventLog
     }
 
-    getError() : ErrorLog<TAllowedStates> | null {
+    getError() : JExecutionError<TAllowedStates> | null {
         return this.error
+    }
+
+    /** Creates a stable, user-facing snapshot after graph evaluation finishes. */
+    toResult(state: Uncertain<TAllowedStates>): JExecutionResult<TAllowedStates> {
+        return new JExecutionResult({
+            state,
+            events: [...this.eventLog],
+            inputTokenCount: this.inputTokenCount,
+            outputTokenCount: this.outputTokenCount,
+            error: this.error
+        })
     }
 
 }

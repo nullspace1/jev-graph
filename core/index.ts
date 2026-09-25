@@ -1,6 +1,11 @@
 // Graph construction and execution
 export { default as JGraph } from "./graph/graph"
 export { JExecutionState } from "./graph/execution_state"
+export {
+    JExecutionResult,
+    type JExecutionError,
+    type JExecutionResultParams
+} from "./graph/execution_result"
 export { JAnswerCache } from "./graph/answer_cache"
 export { JConnectedNodes } from "./graph/connected_nodes"
 export { JDrawing, JDrawEdge, JDrawNode } from "./graph/draw"
@@ -19,9 +24,9 @@ export type {  JNodeEdge, JNodeParams } from "./nodes/node"
 export { default as JAction, type JActionParams } from "./nodes/action"
 export { default as JCondition, type JConditionParams } from "./nodes/condition"
 export {
-    default as JDecision,
-    type DecisionMapper,
-    type DecisionOptions,
+    default as JChoice,
+    type ChoiceMapper as DecisionMapper,
+    type ChoiceOptions as DecisionOptions,
     type JDecisionParams
 } from "./nodes/decision"
 export { default as JQuestion, type JQuestionParams } from "./nodes/question"
@@ -68,4 +73,5 @@ export type { JListener } from "./events/listener"
 // Errors
 export { default as InvalidStateError } from "./exceptions/invalid_state"
 export { default as NodeEvalError } from "./exceptions/node_eval"
+export { default as APIError } from "./exceptions/api_error"
 export {JevOpenRouter} from "./interface/openrouter"
