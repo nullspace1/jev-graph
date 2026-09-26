@@ -2,6 +2,7 @@ import type JNode from "../nodes/node"
 import Uncertain from "../nodes/uncertain"
 import type JevApi from "../interface/api"
 import type { JListener } from "../events/listener"
+import type { JEventData } from "../events/event"
 import { JExecutionState } from "./execution_state"
 import type { JExecutionResult } from "./execution_result"
 import { JConnectedNodes } from "./connected_nodes"
@@ -14,7 +15,7 @@ class JGraph<TInput extends object, TAllowedStates extends TInput> {
 
     private readonly initialNode: JNode<TAllowedStates>
     private readonly api: JevApi
-    private readonly listeners: Array<JListener<TAllowedStates>> = []
+    private readonly listeners: Array<JListener<TAllowedStates, JEventData>> = []
 
     constructor(initialNode: JNode<TAllowedStates>, api: JevApi) {
         this.initialNode = initialNode
@@ -75,7 +76,7 @@ class JGraph<TInput extends object, TAllowedStates extends TInput> {
         return drawing
     }
 
-    public addListener(listener: JListener<TAllowedStates>) {
+    public addListener(listener: JListener<TAllowedStates, JEventData>) {
         this.listeners.push(listener)
     }
 

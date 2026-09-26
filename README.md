@@ -76,6 +76,15 @@ You can run the chess example directly with `tsx` from the repository root:
 npx tsx examples/chess/index.ts
 ```
 
+- Chess server (browser board and AI move endpoint):
+
+```powershell
+cd examples
+$env:MODEL='your-model'; $env:OPENROUTER_API_KEY='your-key'; npm run example:chess-server
+```
+
+Open `http://localhost:3000`. Set `PORT` to use a different local port.
+
 
 
 

@@ -1,4 +1,4 @@
-import type { JEvent } from "../events/event"
+import type { JEvent, JEventData } from "../events/event"
 import type JNode from "../nodes/node"
 import type Uncertain from "../nodes/uncertain"
 
@@ -22,6 +22,11 @@ export class JExecutionResult<TAllowedStates extends object> {
         this.outputTokenCount = params.outputTokenCount
         this.error = params.error
     }
+
+    public getEvents<J extends JEventData, T extends JEvent<TAllowedStates, J>>(label: J["label"]): T[] {
+        return this.events.filter(event => event.label === label) as T[]
+    }
+
 }
 
 export interface JExecutionError<TAllowedStates extends object> {

@@ -1,10 +1,18 @@
 import type { JExecutionState } from "../graph/execution_state";
-import type { Json } from "../nodes/node";
+import { JEvent, JEventData } from "./event";
 
-export interface JListener<TAllowedStates extends object> {
+export abstract class JListener<TAllowedStates extends object, TEventData extends JEventData> {
 
-    listen(state : JExecutionState<TAllowedStates>) : void 
-    shouldListen(state : JExecutionState<TAllowedStates>) : boolean
+    private label: TEventData["label"]
+
+    constructor(label: TEventData["label"]) {
+        this.label = label
+    }
+
+    public abstract listen(state : JExecutionState<TAllowedStates>) : void 
+    public shouldListen(event : JEvent<TAllowedStates, JEventData>) : boolean {
+        return event.label == this.label
+    }
     
 }
 

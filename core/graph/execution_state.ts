@@ -19,7 +19,7 @@ import APIError from "../exceptions/api_error"
 export class JExecutionState<TAllowedStates extends object> {
 
     private readonly eventLog: Array<JEvent<TAllowedStates>> = []
-    private readonly listeners: Array<JListener<TAllowedStates>> 
+    private readonly listeners: Array<JListener<TAllowedStates, JEventData>> = []
     private currentNode: JNode<TAllowedStates>
     private currentState: Uncertain<TAllowedStates>
     private step : number = 0
@@ -33,7 +33,7 @@ export class JExecutionState<TAllowedStates extends object> {
     constructor(
         currentNode: JNode<TAllowedStates>,
         currentState: Uncertain<TAllowedStates>,
-        listeners: Array<JListener<TAllowedStates>>,
+        listeners: Array<JListener<TAllowedStates, JEventData>>,
         api: JevApi
     ) {
         this.currentNode = currentNode
@@ -118,9 +118,9 @@ export class JExecutionState<TAllowedStates extends object> {
 
     private traceApiCall(output: SystemOneResult<Questions>): void {
         const data: JApiCallEventData = {
-            type: "api_call",
-            nodeId: this.currentNode.id,
-            output
+            label: "api_call",
+            data: {nodeId: this.currentNode.id,
+            output }
         }
         this.recordEvent(this.currentNode, this.currentState, data)
         this.inputTokenCount += output.usage.input_tokens
@@ -134,15 +134,12 @@ export class JExecutionState<TAllowedStates extends object> {
         this.currentNode = node
         this.currentState = currentState
         this.recordEvent(node, currentState, {
-            type: "node_start",
-            nodeId: node.id,
-            step: this.step
-        })
-        for (const listener of this.listeners) {
-            if (listener.shouldListen(this)) {
-                listener.listen(this)
+            label: "node_start",
+            data: {
+                nodeId: node.id,
+                step: this.step
             }
-        }
+        })
     }
 
     traceNodeEnd(
@@ -150,9 +147,11 @@ export class JExecutionState<TAllowedStates extends object> {
         currentState: Uncertain<TAllowedStates>
     ): void {
         this.recordEvent(node, currentState, {
-            type: "node_end",
-            nodeId: node.id,
-            step: this.step
+            label: "node_end",
+            data: {
+                nodeId: node.id,
+                step: this.step
+            }
         })
         this.step++
     }
@@ -160,12 +159,14 @@ export class JExecutionState<TAllowedStates extends object> {
     traceError(error: Error) : void {
         this.error = { error, step: this.step, node: this.currentNode }
         this.recordEvent(this.currentNode, this.currentState, {
-            type: "exception",
-            nodeId: this.currentNode.id,
-            step: this.step,
-            name: error.name,
-            message: error.message,
-            ...(error.stack === undefined ? {} : { stack: error.stack })
+            label: "exception",
+            data: {
+                nodeId: this.currentNode.id,
+                step: this.step,
+                name: error.name,
+                message: error.message,
+                ...(error.stack === undefined ? {} : { stack: error.stack })
+            }
         })
     }
 
@@ -174,7 +175,14 @@ export class JExecutionState<TAllowedStates extends object> {
         state: Uncertain<TAllowedStates>,
         data: JEventData
     ): void {
-        this.eventLog.push(new JEvent(node, state, Date.now(), data))
+        const event = new JEvent(node, state, Date.now(), data.data, data.label)
+        this.eventLog.push(event)
+
+        for (const listener of this.listeners) {
+            if (listener.shouldListen(event)) {
+                listener.listen(this)
+            }
+        }
     }
 
     getCurrentNode(): JNode<TAllowedStates> {
