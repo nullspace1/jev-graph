@@ -57,7 +57,7 @@ npm run example:customer
 From the `examples/` folder:
 
 ```powershell
-#$env:MODEL='gpt-4o-mini'; npm run example:support-ticket
+#$env:MODEL='jev/latest'; npm run example:support-ticket
 ```
 
 Or on Unix/macOS shells:
