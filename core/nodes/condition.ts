@@ -40,10 +40,10 @@ class JCondition<TState extends object> extends JNode<TState> {
         }
     }
 
-    public edges(): [JNode<TState>, string, StateMapping<TState>][] {
+    public edges(): [JNode<TState>, string][] {
         return [
-            [this.yes, "yes", this.yesMapping],
-            [this.no, "no", this.noMapping]
+            [this.yes, "yes"],
+            [this.no, "no"]
         ]
     }
 }

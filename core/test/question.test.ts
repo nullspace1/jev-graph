@@ -10,6 +10,7 @@ describe("JQuestion", () => {
         [0.8, "yes", 0.8],
         [0.3, "no", 0.7]
     ] as const)("routes noul %s to %s with correct confidence", async (noul, branch, confidence) => {
+        let distribution: { yes: number, no: number } | undefined
         const api = new RecordingApi(questions => answerForOnlyQuestion(questions, {
             noul,
             confidence: 0.4
@@ -23,8 +24,14 @@ describe("JQuestion", () => {
             threshold: 0.5,
             yes: new JResponse(),
             no: new JResponse(),
-            yesMapping: state => ({ ...state, branch: "yes" }),
-            noMapping: state => ({ ...state, branch: "no" })
+            yesMapping: (_answer, probabilities, state) => {
+                distribution = probabilities
+                return { ...state, branch: "yes" }
+            },
+            noMapping: (_answer, probabilities, state) => {
+                distribution = probabilities
+                return { ...state, branch: "no" }
+            }
         })
 
         const result = await new JGraph(question, api).evaluate({ value: 4 })
@@ -36,5 +43,6 @@ describe("JQuestion", () => {
         })
         expect(result.state.value.branch).toBe(branch)
         expect(result.state.confidence).toBe(confidence)
+        expect(distribution).toEqual({ yes: noul, no: 1 - noul })
     })
 })

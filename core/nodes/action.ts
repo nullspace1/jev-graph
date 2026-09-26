@@ -6,7 +6,6 @@ import {
     multiplicativeConfidencePolicy
 } from "./confidence-policy"
 import type { JNodeResult } from "./node_result"
-import type { StateMapping } from "./state-mapping"
 
 export interface JActionParams<TState extends object> extends JNodeParams {
     action: (state: TState) => TState
@@ -36,11 +35,10 @@ class JAction<TState extends object> extends JNode<TState, {}> {
         }
     }
 
-    public edges(): [JNode<TState>, string, StateMapping<TState>][] {
+    public edges(): [JNode<TState>, string][] {
         return [[
             this.node,
-            this.description || "mapped",
-            this.action
+            this.description || "mapped"
         ]]
     }
 

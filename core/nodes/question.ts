@@ -6,8 +6,18 @@ import {
     multiplicativeConfidencePolicy
 } from "./confidence-policy"
 import { JNodeResult } from "./node_result"
-import { identityMapping, type StateMapping } from "./state-mapping"
 import { NoulQuestion, NoulResponse, Question } from "@typesafe-ai/sdk"
+
+export interface QuestionDistribution {
+    readonly yes: number
+    readonly no: number
+}
+
+export type QuestionMapper<TState extends object> = (
+    answer: boolean,
+    distribution: QuestionDistribution,
+    state: TState
+) => TState
 
 export interface JQuestionParams<TState extends object> extends JNodeParams {
     question: string
@@ -19,8 +29,8 @@ export interface JQuestionParams<TState extends object> extends JNodeParams {
     criteriaForNo?: string
     threshold?: number
     confidencePolicy?: ConfidencePolicy
-    yesMapping?: StateMapping<TState>
-    noMapping?: StateMapping<TState>
+    yesMapping?: QuestionMapper<TState>
+    noMapping?: QuestionMapper<TState>
 }
 
 type SingleNoulQuestion = {[x: string]: NoulQuestion}
@@ -35,8 +45,8 @@ class JQuestion<TState extends object> extends JNode<TState, SingleNoulQuestion>
     public no: JNode<TState>
     public threshold: number
     public confidencePolicy: ConfidencePolicy
-    public yesMapping: StateMapping<TState>
-    public noMapping: StateMapping<TState>
+    public yesMapping: QuestionMapper<TState>
+    public noMapping: QuestionMapper<TState>
 
     constructor(params: JQuestionParams<TState>) {
         super(params)
@@ -48,8 +58,8 @@ class JQuestion<TState extends object> extends JNode<TState, SingleNoulQuestion>
         this.criteriaForNo = params.criteriaForNo ?? "Criteria for No"
         this.threshold = params.threshold ?? 0.5
         this.confidencePolicy = params.confidencePolicy ?? multiplicativeConfidencePolicy
-        this.yesMapping = params.yesMapping ?? identityMapping
-        this.noMapping = params.noMapping ?? identityMapping
+        this.yesMapping = params.yesMapping ?? ((_answer, _distribution, state) => state)
+        this.noMapping = params.noMapping ?? ((_answer, _distribution, state) => state)
         this.projection = params.projection
     }
 
@@ -76,18 +86,22 @@ class JQuestion<TState extends object> extends JNode<TState, SingleNoulQuestion>
         const output = await this.callApi(state, executionState)
 
         const x =  output.answers[this.questionName] as NoulResponse
+        const distribution: QuestionDistribution = {
+            yes: x.noul,
+            no: 1 - x.noul
+        }
 
         if (x.noul > this.threshold) {
             const nextState = state.addUncertainty(x.noul, this.confidencePolicy)
             return {
                 node: this.yes,
-                state: nextState.apply(this.yesMapping)
+                state: nextState.apply(state => this.yesMapping(true, distribution, state))
             }
         } else {
             const nextState = state.addUncertainty(1 - x.noul, this.confidencePolicy)
             return {
                 node: this.no,
-                state: nextState.apply(this.noMapping)
+                state: nextState.apply(state => this.noMapping(false, distribution, state))
             }
         } 
 
@@ -97,10 +111,10 @@ class JQuestion<TState extends object> extends JNode<TState, SingleNoulQuestion>
         return this.projection(state)
     }
 
-    public edges(): [JNode<TState>, string, StateMapping<TState>][] {
+    public edges(): [JNode<TState>, string][] {
         return [
-            [this.yes, "yes", this.yesMapping],
-            [this.no, "no", this.noMapping]
+            [this.yes, "yes"],
+            [this.no, "no"]
         ]
     }
 

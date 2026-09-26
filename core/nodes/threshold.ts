@@ -6,7 +6,6 @@ import {
     multiplicativeConfidencePolicy
 } from "./confidence-policy"
 import { JNodeResult } from "./node_result"
-import { identityMapping, type StateMapping } from "./state-mapping"
 
 export interface JThresholdParams<TState extends object> extends JNodeParams {
     threshold: number
@@ -53,10 +52,10 @@ class JThreshold<TAllowedStates extends object> extends JNode<TAllowedStates> {
         }
     }
 
-     public edges(): [JNode<TAllowedStates>, string, StateMapping<TAllowedStates>][] {
+     public edges(): [JNode<TAllowedStates>, string][] {
         return [
-            [this.accepted, `confidence >= ${this.threshold}`, identityMapping],
-            [this.rejected, `confidence < ${this.threshold}`, identityMapping]
+            [this.accepted, `confidence >= ${this.threshold}`],
+            [this.rejected, `confidence < ${this.threshold}`]
         ]
     }
 }

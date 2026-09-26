@@ -8,6 +8,7 @@ import { answerForOnlyQuestion, RecordingApi } from "./support"
 interface State { selected?: string, score?: number }
 
 function scoringGraph(score: number) {
+    let distribution: Record<string, number> | undefined
     const complete = new JResponse<State>()
     const nodeFor = (selected: string) => new JAction<State>({
         node: complete,
@@ -15,7 +16,8 @@ function scoringGraph(score: number) {
     })
     const api = new RecordingApi(questions => answerForOnlyQuestion(questions, {
         score,
-        confidence: 0.5
+        confidence: 0.5,
+        probabilities: { 0: 0.5, 1: 0.5 }
     }))
     const scoring = new JScoring<State, readonly [string, string]>({
         question: "Rate this",
@@ -27,10 +29,13 @@ function scoringGraph(score: number) {
             [10, nodeFor("medium")],
             [20, nodeFor("high")]
         ],
-        mapper: (value, state) => ({ ...state, score: value })
+        mapper: (value, probabilities, state) => {
+            distribution = probabilities
+            return { ...state, score: value }
+        }
     })
 
-    return { api, graph: new JGraph(scoring, api) }
+    return { api, distribution: () => distribution, graph: new JGraph(scoring, api) }
 }
 
 describe("JScoring", () => {
@@ -42,7 +47,7 @@ describe("JScoring", () => {
         [20, "high"],
         [200, "high"]
     ])("selects %s at score %s", async (score, selected) => {
-        const { api, graph } = scoringGraph(score)
+        const { api, distribution, graph } = scoringGraph(score)
 
         const result = await graph.evaluate({})
 
@@ -53,6 +58,7 @@ describe("JScoring", () => {
         })
         expect(result.state.value).toEqual({ selected, score })
         expect(result.state.confidence).toBe(0.5)
+        expect(distribution()).toEqual({ 0: 0.5, 1: 0.5 })
     })
 
     it.each([

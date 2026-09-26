@@ -76,14 +76,17 @@ You can run the chess example directly with `tsx` from the repository root:
 npx tsx examples/chess/index.ts
 ```
 
-- Chess server (browser board and AI move endpoint):
+- Chess server (AI-vs-AI simulation):
 
 ```powershell
 cd examples
 $env:MODEL='your-model'; $env:OPENROUTER_API_KEY='your-key'; npm run example:chess-server
 ```
 
-Open `http://localhost:3000`. Set `PORT` to use a different local port.
+Open `http://localhost:3000`. Set `WHITE_MODEL` and `BLACK_MODEL` to use
+different models for each side; otherwise both use `MODEL`. Set `PORT` to use a
+different local port. The browser's delay input controls the pause between
+animated AI moves.
 
 
 

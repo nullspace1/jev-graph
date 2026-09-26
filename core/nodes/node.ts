@@ -2,14 +2,12 @@ import type Uncertain from "./uncertain"
 import type { JExecutionState } from "../graph/execution_state"
 import { JDrawEdge, JDrawing, JDrawNode } from "../graph/draw"
 import type { JNodeResult } from "./node_result"
-import type { StateMapping } from "./state-mapping"
 import { Question, Questions } from "@typesafe-ai/sdk"
 
 
 export type JNodeEdge<TState extends object, Q extends Questions> = [
     JNode<TState, Q>,
-    string,
-    StateMapping<TState>
+    string
 ]
 
 export interface JNodeParams {

@@ -26,15 +26,22 @@ export { default as JCondition, type JConditionParams } from "./nodes/condition"
 export {
     default as JChoice,
     type ChoiceMapper as DecisionMapper,
+    type ChoiceDistribution as DecisionDistribution,
     type ChoiceOptions as DecisionOptions,
     type JDecisionParams
 } from "./nodes/decision"
-export { default as JQuestion, type JQuestionParams } from "./nodes/question"
+export {
+    default as JQuestion,
+    type JQuestionParams,
+    type QuestionDistribution,
+    type QuestionMapper
+} from "./nodes/question"
 export { default as JResponse, type JResponseParams } from "./nodes/response"
 export {
     default as JScoring,
     type JScoringParams,
     type ScoreAction,
+    type ScoreDistribution,
     type ScoreMapper
 } from "./nodes/scoring"
 export { default as JThreshold, type JThresholdParams } from "./nodes/threshold"

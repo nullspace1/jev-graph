@@ -7,41 +7,53 @@ import {
 } from "./confidence-policy"
 import type { JNodeResult } from "./node_result"
 import { identityMapping, type StateMapping } from "./state-mapping"
-import { ChoiceQuestion, ChoiceResponse, Description, Question } from "@typesafe-ai/sdk"
+import { ChoiceQuestion, ChoiceResponse, Description } from "@typesafe-ai/sdk"
 
 
-export type ChoiceOptions<TState extends object> = Record<
-    string,
+export type ChoiceOptions<TState extends object, C extends readonly string[]> = Record<
+    C[number],
     [Description, JNode<TState>]
 >
 
-export type MappedChoiceOptions<TState extends object> = (state : TState) => ChoiceOptions<TState>
+export type MappedChoiceOptions<TState extends object, C extends readonly string[]> = (state : TState) => ChoiceOptions<TState, C>
 
-export type ChoiceMapper<TState extends object> = (
-    choice: string,
+export type ChoiceDistribution<C extends readonly string[]> = Readonly<
+    Record<C[number], number>
+>
+
+export type ChoiceMapper<TState extends object, C extends readonly string[]> = (
+    choice: C[number],
+    distribution: ChoiceDistribution<C>,
     state: TState
 ) => TState
 
-export interface JDecisionParams<TState extends object> extends JNodeParams {
+
+export interface JDecisionParams<
+    TState extends object,
+    C extends readonly string[] = string[]
+> extends JNodeParams {
     question: string
     projection?: (state: TState) => object
-    options: ChoiceOptions<TState> | MappedChoiceOptions<TState>
-    mapper?: ChoiceMapper<TState>
+    options: ChoiceOptions<TState,C> | MappedChoiceOptions<TState,C>
+    mapper?: ChoiceMapper<TState, C>
     questionName?: string
     confidencePolicy?: ConfidencePolicy
 }
 
 
-class JChoice<TState extends object> extends JNode<TState> {
+class JChoice<
+    TState extends object,
+    C extends readonly string[] = string[]
+> extends JNode<TState> {
     
     public questionName: string
     public question: string
-    public fixedOptions: ChoiceOptions<TState> | null
-    public mappedOptions: MappedChoiceOptions<TState> | null
+    public fixedOptions: ChoiceOptions<TState,C> | null
+    public mappedOptions: MappedChoiceOptions<TState,C> | null
 
     public confidencePolicy: ConfidencePolicy
 
-    constructor(params: JDecisionParams<TState>) {
+    constructor(params: JDecisionParams<TState,C>) {
         if (params.options instanceof Function) {
             params.shouldPrefetch = false
         } 
@@ -66,7 +78,7 @@ class JChoice<TState extends object> extends JNode<TState> {
     }
 
     private readonly projection: (state: TState) => object
-    private readonly mapper?: ChoiceMapper<TState>
+    private readonly mapper?: ChoiceMapper<TState,C>
 
     public apiQuestions(): ChoiceQuestion | {} {
 
@@ -82,7 +94,7 @@ class JChoice<TState extends object> extends JNode<TState> {
         executionState: JExecutionState<TState>
     ): Promise<JNodeResult<TState>> {
 
-        const options = this.mappedOptions ? this.mappedOptions(state.value) : this.fixedOptions as ChoiceOptions<TState>
+        const options = this.mappedOptions ? this.mappedOptions(state.value) : this.fixedOptions as ChoiceOptions<TState,C>
         if (Object.keys(options).length === 0) {
             throw new RangeError("Decision options cannot be empty")
         }
@@ -94,14 +106,19 @@ class JChoice<TState extends object> extends JNode<TState> {
                 this.projectQuestionState(state.value)
             )
 
-        const x = output.answers[this.questionName] as ChoiceResponse
+        const x = output.answers[this.questionName] as ChoiceResponse<
+            Record<C[number], Description>
+        >
 
         const nextState = state.addUncertainty(x.confidence, this.confidencePolicy)
-        const [_, node] = options[x.choice]
+        const [_, node] = options[x.choice as C[number]]
 
         return {
             node: node,
-            state: nextState.apply(this.mappingFor(x.choice))
+            state: nextState.apply(this.mappingFor(
+                x.choice,
+                x.probabilities as ChoiceDistribution<C>
+            ))
         }
 
     }
@@ -110,11 +127,11 @@ class JChoice<TState extends object> extends JNode<TState> {
         return this.projection(state)
     }
 
-    private questionFor(options: ChoiceOptions<TState>): Record<string, ChoiceQuestion> {
-        const criteria: Record<string, Description> = {}
+    private questionFor(options: ChoiceOptions<TState,C>): Record<string, ChoiceQuestion> {
+        const criteria: Record<C[number], Description> = {} as Record<C[number], Description>
 
-        for (const [key, value] of Object.entries(options)) {
-            criteria[key] = value[0]
+        for (const [key , value] of Object.entries(options)) {
+            criteria[key as C[number]] = (value as [Description, JNode<TState>])[0]
         }
 
         return {
@@ -126,22 +143,25 @@ class JChoice<TState extends object> extends JNode<TState> {
         }
     }
 
-    private mappingFor(choice: string): StateMapping<TState> {
+    private mappingFor(
+        choice: C[number],
+        distribution: ChoiceDistribution<C> = {} as ChoiceDistribution<C>
+    ): StateMapping<TState> {
         if (this.mapper === undefined) {
             return identityMapping
         }
 
-        return state => this.mapper!(choice, state)
+        return state => this.mapper!(choice, distribution, state)
     }
 
-    public edges(): [JNode<TState>, string, StateMapping<TState>][] {
+    public edges(): [JNode<TState>, string][] {
         if (this.fixedOptions === null) {
             return []
         }
-        const res: [JNode<TState>, string, StateMapping<TState>][] = []
+        const res: [JNode<TState>, string][] = []
         for (const [key, value] of Object.entries(this.fixedOptions)) {
-            const node = value[1]
-            res.push([node, key, this.mappingFor(key)])
+            const node = (value as  [Description, JNode<TState>])[1]
+            res.push([node, key])
         }
         return res
     }

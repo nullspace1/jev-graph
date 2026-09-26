@@ -3,7 +3,6 @@ import JNode from "../nodes/node"
 import type { JNodeResult } from "../nodes/node_result"
 import JQuestion from "../nodes/question"
 import JResponse from "../nodes/response"
-import { identityMapping, type StateMapping } from "../nodes/state-mapping"
 import Uncertain from "../nodes/uncertain"
 import type { JExecutionState } from "../graph/execution_state"
 import type { Question, Questions } from "@typesafe-ai/sdk"
@@ -36,8 +35,8 @@ class QuestionlessPassThrough extends JNode<State, Record<string, Question>> {
         return { state, node: this.next }
     }
 
-    public edges(): [JNode<State>, string, StateMapping<State>][] {
-        return [[this.next, "next", identityMapping]]
+    public edges(): [JNode<State>, string][] {
+        return [[this.next, "next"]]
     }
 }
 

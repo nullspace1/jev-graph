@@ -15,8 +15,11 @@ export type ScoreAction<TState extends object> = [
     JNode<TState>
 ]
 
-export type ScoreMapper<TState extends object> = (
+export type ScoreDistribution<C extends ScoreCriteria> = ScoreResponse<C>["probabilities"]
+
+export type ScoreMapper<TState extends object, C extends ScoreCriteria> = (
     score: number,
+    distribution: ScoreDistribution<C>,
     state: TState
 ) => TState
 
@@ -25,14 +28,14 @@ export interface JScoringParams<TState extends object, C extends ScoreCriteria> 
     projection: (state: TState) => object
     options: C
     action: ScoreAction<TState>[]
-    mapper?: ScoreMapper<TState>
+    mapper?: ScoreMapper<TState, C>
     questionName?: string
     confidencePolicy?: ConfidencePolicy
 }
 
 type SingleScoringQuestion<T extends ScoreCriteria> = {[key: string]: ScoreQuestion<T> }
 
-class JScoring<TState extends object, C extends ScoreCriteria> extends JNode<TState, SingleScoringQuestion<ScoreCriteria>> {
+class JScoring<TState extends object, C extends ScoreCriteria> extends JNode<TState, SingleScoringQuestion<C>> {
     
     public questionName: string
     public question: string
@@ -53,7 +56,7 @@ class JScoring<TState extends object, C extends ScoreCriteria> extends JNode<TSt
     }
 
     private readonly projection: (state: TState) => object
-    private readonly mapper?: ScoreMapper<TState>
+    private readonly mapper?: ScoreMapper<TState, C>
 
     public apiQuestions(): SingleScoringQuestion<C> {
         const question: ScoreQuestion<C> = {
@@ -72,7 +75,7 @@ class JScoring<TState extends object, C extends ScoreCriteria> extends JNode<TSt
 
         const output = await this.callApi(state, executionState)
 
-        const x =  output.answers[this.questionName] as ScoreResponse
+        const x = output.answers[this.questionName] as ScoreResponse<C>
 
         const nextState = state.addUncertainty(x.confidence, this.confidencePolicy)
 
@@ -82,7 +85,7 @@ class JScoring<TState extends object, C extends ScoreCriteria> extends JNode<TSt
 
         if (action !== undefined) {
             return {
-                state: nextState.apply(this.mappingFor(x.score)),
+                state: nextState.apply(this.mappingFor(x.score, x.probabilities)),
                 node: action[1]
             }
         }
@@ -95,12 +98,15 @@ class JScoring<TState extends object, C extends ScoreCriteria> extends JNode<TSt
         return this.projection(state)
     }
 
-    private mappingFor(score: number): StateMapping<TState> {
+    private mappingFor(
+        score: number,
+        distribution: ScoreDistribution<C> = {} as ScoreDistribution<C>
+    ): StateMapping<TState> {
         if (this.mapper === undefined) {
             return identityMapping
         }
 
-        return state => this.mapper!(score, state)
+        return state => this.mapper!(score, distribution, state)
     }
 
     private validateActionStarts(): void {
@@ -119,11 +125,10 @@ class JScoring<TState extends object, C extends ScoreCriteria> extends JNode<TSt
         }
     }
 
-    public edges(): [JNode<TState>, string, StateMapping<TState>][] {
+    public edges(): [JNode<TState>, string][] {
         return this.action.map(([start, next]) => [
             next,
-            `score >= ${start}`,
-            this.mappingFor(start)
+            `score >= ${start}`
         ])
     }
 

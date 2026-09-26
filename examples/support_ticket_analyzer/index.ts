@@ -57,8 +57,8 @@ const checkAutomaticResolution = new JQuestion<SupportWorkflowState>({
     questionName: "automatic_resolution",
     criteriaForYes: "The request has a documented, safe automated resolution.",
     criteriaForNo: "The request needs human follow-up.",
-    yesMapping: state => ({ ...state, outcome: "solved automatically" }),
-    noMapping: state => ({ ...state, outcome: "request generated" })
+    yesMapping: (_answer, _distribution, state) => ({ ...state, outcome: "solved automatically" }),
+    noMapping: (_answer, _distribution, state) => ({ ...state, outcome: "request generated" })
 })
 
 const assignTeam = new JDecision<SupportWorkflowState>({
@@ -71,7 +71,7 @@ const assignTeam = new JDecision<SupportWorkflowState>({
         incident: ["An outage, defect, or security incident.", checkAutomaticResolution]
     },
     shouldPrefetch: false,
-    mapper: (choice, state) => ({
+    mapper: (choice, _distribution, state) => ({
         ...state,
         team: choice as SupportWorkflowState["team"]
     })

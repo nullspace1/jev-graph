@@ -11,6 +11,7 @@ interface State {
 
 describe("JDecision", () => {
     it("sends fixed choice criteria, maps state, confidence, and route", async () => {
+        let distribution: Record<string, number> | undefined
         const complete = new JResponse<State>()
         const selected = new JAction<State>({
             node: complete,
@@ -18,14 +19,18 @@ describe("JDecision", () => {
         })
         const api = new RecordingApi(questions => answerForOnlyQuestion(questions, {
             choice: "a",
-            confidence: 0.8
+            confidence: 0.8,
+            probabilities: { a: 0.8 }
         }))
         const decision = new JDecision<State>({
             question: "Choose a mode",
             questionName: "mode",
             projection: state => ({ mode: state.mode }),
             options: { a: ["Mode A", selected] },
-            mapper: (choice, state) => ({ ...state, selected: choice })
+            mapper: (choice, probabilities, state) => {
+                distribution = probabilities
+                return { ...state, selected: choice }
+            }
         })
 
         const result = await new JGraph(decision, api).evaluate({ mode: "a" })
@@ -38,13 +43,15 @@ describe("JDecision", () => {
         }])
         expect(result.state.value).toEqual({ mode: "a", selected: "a" })
         expect(result.state.confidence).toBe(0.8)
+        expect(distribution).toEqual({ a: 0.8 })
     })
 
     it("resolves dynamic options at runtime and does not prefetch", async () => {
         const complete = new JResponse<State>()
         const api = new RecordingApi(questions => answerForOnlyQuestion(questions, {
             choice: "b",
-            confidence: 0.5
+            confidence: 0.5,
+            probabilities: { b: 0.5 }
         }))
         const decision = new JDecision<State>({
             question: "Choose dynamically",
@@ -75,7 +82,8 @@ describe("JDecision", () => {
         const complete = new JResponse<State>()
         const api = new RecordingApi(questions => answerForOnlyQuestion(questions, {
             choice: "a",
-            confidence: 1
+            confidence: 1,
+            probabilities: { a: 1 }
         }))
         const decision = new JDecision<State>({
             question: "Choose",

@@ -6,7 +6,6 @@ import {
     multiplicativeConfidencePolicy
 } from "./confidence-policy"
 import { JNodeResult } from "./node_result"
-import type { StateMapping } from "./state-mapping"
 
 export interface JResponseParams extends JNodeParams {
     confidencePolicy?: ConfidencePolicy
@@ -37,7 +36,7 @@ class JResponse<TAllowedStates extends object> extends JNode<TAllowedStates> {
     }
 }
 
-    public edges(): [JNode<TAllowedStates>, string, StateMapping<TAllowedStates>][] {
+    public edges(): [JNode<TAllowedStates>, string][] {
         return []
     }
 
